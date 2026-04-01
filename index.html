@@ -103,6 +103,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);font-fa
 .shutter-inner{width:34px;height:34px;border-radius:50%;background:rgba(240,240,238,.82);transition:all .2s;}
 .shutter:hover .shutter-inner{background:var(--white);}
 .cam-error{font-size:8px;letter-spacing:2px;color:rgba(240,180,180,.7);text-align:center;max-width:320px;line-height:2;display:none;}
+.cam-prompt{display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center;}
+.cam-prompt-text{font-family:var(--serif);font-size:22px;font-style:italic;color:var(--white);line-height:1.5;}
+.cam-prompt-sub{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.cam-prompt-btns{display:flex;gap:16px;margin-top:8px;}
 
 /* ─── Grid Screen ─── */
 #s-grid{justify-content:flex-start;padding-top:48px;overflow:hidden;}
@@ -257,17 +261,27 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);font-fa
 <!-- CAMERA -->
 <div class="screen" id="s-camera">
   <div class="step-label">Step 3 of 3</div>
-  <div class="cam-label">Position yourself in frame</div>
-  <div class="cam-frame">
+
+  <div class="cam-prompt" id="cam-prompt">
+    <div class="cam-prompt-text">May we use your camera?</div>
+    <div class="cam-prompt-sub">No data is stored &nbsp;·&nbsp; Anonymous &nbsp;·&nbsp; One photo only</div>
+    <div class="cam-prompt-btns">
+      <button class="btn" id="skip-btn">Skip</button>
+      <button class="btn-primary" id="allow-cam-btn">Allow Camera</button>
+    </div>
+  </div>
+
+  <div class="cam-label" id="cam-label" style="display:none;">Position yourself in frame</div>
+  <div class="cam-frame" id="cam-frame" style="display:none;">
     <video id="video" autoplay playsinline muted></video>
     <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
     <div class="cam-corner bl"></div><div class="cam-corner br"></div>
   </div>
-  <div class="cam-info" id="cam-info">No data is stored &nbsp;·&nbsp; Anonymous collection</div>
-  <button class="shutter" id="shutter-btn"><div class="shutter-inner"></div></button>
+  <div class="cam-info" id="cam-info" style="display:none;">No data is stored &nbsp;·&nbsp; Anonymous collection</div>
+  <button class="shutter" id="shutter-btn" style="display:none;"><div class="shutter-inner"></div></button>
   <div class="cam-error" id="cam-error">
     Camera access denied.<br><br>
-    <button class="btn" style="font-size:8px;" id="skip-btn">Skip camera — continue anyway</button>
+    <button class="btn" style="font-size:8px;" id="skip-btn-err">Skip camera — continue anyway</button>
   </div>
 </div>
 
@@ -394,16 +408,38 @@ document.getElementById('country-next-btn').addEventListener('click',()=>{if(!se
 function buildSortList(){const list=document.getElementById('sort-list');list.innerHTML='';CATEGORIES.forEach((cat,idx)=>{const li=document.createElement('li');li.className='sort-item';li.draggable=true;li.dataset.idx=idx;li.innerHTML=`<span class="sort-rank">${idx+1}.</span><span class="sort-text">${cat}</span><span class="sort-handle">⠿</span>`;list.appendChild(li);});initDragSort(list);}
 function updateRanks(list){list.querySelectorAll('.sort-item').forEach((el,i)=>el.querySelector('.sort-rank').textContent=(i+1)+'.');}
 function initDragSort(list){let dragEl=null;list.addEventListener('dragstart',e=>{dragEl=e.target.closest('.sort-item');if(dragEl){dragEl.classList.add('dragging');e.dataTransfer.effectAllowed='move';}});list.addEventListener('dragend',()=>{if(dragEl)dragEl.classList.remove('dragging');list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));updateRanks(list);dragEl=null;});list.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';const target=e.target.closest('.sort-item');if(!target||target===dragEl)return;list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));target.classList.add('drag-over');const items=Array.from(list.children);if(items.indexOf(dragEl)<items.indexOf(target))target.after(dragEl);else target.before(dragEl);});let touchItem=null;list.addEventListener('touchstart',e=>{touchItem=e.target.closest('.sort-item');if(touchItem)touchItem.classList.add('dragging');},{passive:true});list.addEventListener('touchmove',e=>{if(!touchItem)return;e.preventDefault();const y=e.touches[0].clientY;const items=Array.from(list.children);for(const item of items){if(item===touchItem)continue;const rect=item.getBoundingClientRect();const mid=rect.top+rect.height/2;if(y<mid&&items.indexOf(touchItem)>items.indexOf(item)){item.before(touchItem);break;}if(y>mid&&items.indexOf(touchItem)<items.indexOf(item)){item.after(touchItem);break;}}},{passive:false});list.addEventListener('touchend',()=>{if(touchItem)touchItem.classList.remove('dragging');updateRanks(list);touchItem=null;});}
-document.getElementById('priority-next-btn').addEventListener('click',()=>{categoryOrder=Array.from(document.querySelectorAll('#sort-list .sort-item')).map(el=>parseInt(el.dataset.idx));show('s-camera');startCamera();});
+document.getElementById('priority-next-btn').addEventListener('click',()=>{categoryOrder=Array.from(document.querySelectorAll('#sort-list .sort-item')).map(el=>parseInt(el.dataset.idx));show('s-camera');});
 document.getElementById('dive-btn').addEventListener('click',()=>{if(isExpanded)collapseGrid();else expandGrid();});
 
 // ════════════════════════════════════════
 // STEP 3 — CAMERA
 // ════════════════════════════════════════
-async function startCamera(){try{mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});document.getElementById('video').srcObject=mediaStream;await document.getElementById('video').play();document.getElementById('shutter-btn').style.display='flex';document.getElementById('cam-error').style.display='none';document.getElementById('cam-info').style.display='block';}catch(err){console.warn('Camera:',err.name);cameraAccessDenied=true;document.getElementById('shutter-btn').style.display='none';document.getElementById('cam-error').style.display='block';document.getElementById('cam-info').style.display='none';}}
+function skipCamera(){capturedUrl=null;if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}buildAndAnimate();}
+
+async function startCamera(){
+  document.getElementById('cam-prompt').style.display='none';
+  document.getElementById('cam-label').style.display='';
+  document.getElementById('cam-frame').style.display='';
+  try{
+    mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
+    document.getElementById('video').srcObject=mediaStream;
+    await document.getElementById('video').play();
+    document.getElementById('shutter-btn').style.display='flex';
+    document.getElementById('cam-info').style.display='block';
+  }catch(err){
+    console.warn('Camera:',err.name);
+    cameraAccessDenied=true;
+    document.getElementById('cam-frame').style.display='none';
+    document.getElementById('cam-label').style.display='none';
+    document.getElementById('cam-error').style.display='block';
+  }
+}
+
 function capture(){const v=document.getElementById('video'),c=document.getElementById('cap-canvas');c.width=v.videoWidth||640;c.height=v.videoHeight||480;const ctx=c.getContext('2d');ctx.save();ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0);ctx.restore();capturedUrl=c.toDataURL('image/jpeg',.88);if(mediaStream)mediaStream.getTracks().forEach(t=>t.stop());buildAndAnimate();}
 document.getElementById('shutter-btn').addEventListener('click',capture);
-document.getElementById('skip-btn').addEventListener('click',()=>{capturedUrl=null;if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}buildAndAnimate();});
+document.getElementById('allow-cam-btn').addEventListener('click',startCamera);
+document.getElementById('skip-btn').addEventListener('click',skipCamera);
+document.getElementById('skip-btn-err').addEventListener('click',skipCamera);
 
 // ════════════════════════════════════════
 // MESH GRADIENT — camera denied fallback + tile backgrounds
@@ -696,9 +732,12 @@ function restart(){
   document.getElementById('x-axis').innerHTML='';
   document.getElementById('reveal-text').classList.remove('hidden');
   ['r1','r2','grid-legend','grid-actions'].forEach(id=>document.getElementById(id).classList.remove('vis'));
-  document.getElementById('shutter-btn').style.display='';
+  document.getElementById('cam-prompt').style.display='';
+  document.getElementById('cam-label').style.display='none';
+  document.getElementById('cam-frame').style.display='none';
+  document.getElementById('shutter-btn').style.display='none';
   document.getElementById('cam-error').style.display='none';
-  document.getElementById('cam-info').style.display='block';
+  document.getElementById('cam-info').style.display='none';
   document.getElementById('grid-img').style.display='none';
   document.getElementById('grid-placeholder').style.display='block';
   if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}
