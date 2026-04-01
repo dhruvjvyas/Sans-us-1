@@ -395,7 +395,7 @@ function buildSortList(){const list=document.getElementById('sort-list');list.in
 function updateRanks(list){list.querySelectorAll('.sort-item').forEach((el,i)=>el.querySelector('.sort-rank').textContent=(i+1)+'.');}
 function initDragSort(list){let dragEl=null;list.addEventListener('dragstart',e=>{dragEl=e.target.closest('.sort-item');if(dragEl){dragEl.classList.add('dragging');e.dataTransfer.effectAllowed='move';}});list.addEventListener('dragend',()=>{if(dragEl)dragEl.classList.remove('dragging');list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));updateRanks(list);dragEl=null;});list.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';const target=e.target.closest('.sort-item');if(!target||target===dragEl)return;list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));target.classList.add('drag-over');const items=Array.from(list.children);if(items.indexOf(dragEl)<items.indexOf(target))target.after(dragEl);else target.before(dragEl);});let touchItem=null;list.addEventListener('touchstart',e=>{touchItem=e.target.closest('.sort-item');if(touchItem)touchItem.classList.add('dragging');},{passive:true});list.addEventListener('touchmove',e=>{if(!touchItem)return;e.preventDefault();const y=e.touches[0].clientY;const items=Array.from(list.children);for(const item of items){if(item===touchItem)continue;const rect=item.getBoundingClientRect();const mid=rect.top+rect.height/2;if(y<mid&&items.indexOf(touchItem)>items.indexOf(item)){item.before(touchItem);break;}if(y>mid&&items.indexOf(touchItem)<items.indexOf(item)){item.after(touchItem);break;}}},{passive:false});list.addEventListener('touchend',()=>{if(touchItem)touchItem.classList.remove('dragging');updateRanks(list);touchItem=null;});}
 document.getElementById('priority-next-btn').addEventListener('click',()=>{categoryOrder=Array.from(document.querySelectorAll('#sort-list .sort-item')).map(el=>parseInt(el.dataset.idx));show('s-camera');startCamera();});
-
+document.getElementById('dive-btn').addEventListener('click',()=>{if(isExpanded)collapseGrid();else expandGrid();});
 
 // ════════════════════════════════════════
 // STEP 3 — CAMERA
@@ -481,9 +481,7 @@ function buildCollapsedGrid(){
     });
   });
 
-  const diveBtn=document.getElementById('dive-btn');
-  diveBtn.textContent='Dive Deeper →';
-  diveBtn.onclick=expandGrid;
+  document.getElementById('dive-btn').textContent='Dive Deeper →';
 }
 
 function animateCells(){
@@ -578,10 +576,7 @@ function expandGrid(){
     grid.querySelectorAll('.cell').forEach(c=>c.classList.add('vis'));
   },50));
 
-  // Update button
-  const diveBtn=document.getElementById('dive-btn');
-  diveBtn.textContent='← Collapse';
-  diveBtn.onclick=collapseGrid;
+  document.getElementById('dive-btn').textContent='← Collapse';
   document.getElementById('grid-legend').style.display='none';
 }
 
